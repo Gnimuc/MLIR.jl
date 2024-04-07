@@ -40,7 +40,9 @@ elseif Sys.iswindows() && Sys.ARCH === :x86_64
 end
 
 
-const intptr_t = Clong
+const __darwin_intptr_t = Clong
+
+const intptr_t = __darwin_intptr_t
 
 struct MlirDialectHandle
     ptr::Ptr{Cvoid}
@@ -4661,6 +4663,7 @@ function mlirEnableGlobalDebug(enable)
     @ccall mlir_c.mlirEnableGlobalDebug(enable::Bool)::Cvoid
 end
 
+# no prototype is found for this function at Debug.h:22:25, please use with caution
 """
     mlirIsGlobalDebugEnabled()
 
@@ -4685,10 +4688,10 @@ end
 Severity of a diagnostic.
 """
 @cenum MlirDiagnosticSeverity::UInt32 begin
-    MlirDiagnosticError = 0x0000000000000000
-    MlirDiagnosticWarning = 0x0000000000000001
-    MlirDiagnosticNote = 0x0000000000000002
-    MlirDiagnosticRemark = 0x0000000000000003
+    MlirDiagnosticError = 0
+    MlirDiagnosticWarning = 1
+    MlirDiagnosticNote = 2
+    MlirDiagnosticRemark = 3
 end
 
 """
@@ -5444,15 +5447,15 @@ Dimension level types (and properties) that define sparse tensors. See the docum
 These correspond to SparseTensorEncodingAttr::DimLevelType in the C++ API. If updating, keep them in sync and update the static\\_assert in the impl file.
 """
 @cenum MlirSparseTensorDimLevelType::UInt32 begin
-    MLIR_SPARSE_TENSOR_DIM_LEVEL_DENSE = 0x0000000000000004
-    MLIR_SPARSE_TENSOR_DIM_LEVEL_COMPRESSED = 0x0000000000000008
-    MLIR_SPARSE_TENSOR_DIM_LEVEL_COMPRESSED_NU = 0x0000000000000009
-    MLIR_SPARSE_TENSOR_DIM_LEVEL_COMPRESSED_NO = 0x000000000000000a
-    MLIR_SPARSE_TENSOR_DIM_LEVEL_COMPRESSED_NU_NO = 0x000000000000000b
-    MLIR_SPARSE_TENSOR_DIM_LEVEL_SINGLETON = 0x0000000000000010
-    MLIR_SPARSE_TENSOR_DIM_LEVEL_SINGLETON_NU = 0x0000000000000011
-    MLIR_SPARSE_TENSOR_DIM_LEVEL_SINGLETON_NO = 0x0000000000000012
-    MLIR_SPARSE_TENSOR_DIM_LEVEL_SINGLETON_NU_NO = 0x0000000000000013
+    MLIR_SPARSE_TENSOR_DIM_LEVEL_DENSE = 4
+    MLIR_SPARSE_TENSOR_DIM_LEVEL_COMPRESSED = 8
+    MLIR_SPARSE_TENSOR_DIM_LEVEL_COMPRESSED_NU = 9
+    MLIR_SPARSE_TENSOR_DIM_LEVEL_COMPRESSED_NO = 10
+    MLIR_SPARSE_TENSOR_DIM_LEVEL_COMPRESSED_NU_NO = 11
+    MLIR_SPARSE_TENSOR_DIM_LEVEL_SINGLETON = 16
+    MLIR_SPARSE_TENSOR_DIM_LEVEL_SINGLETON_NU = 17
+    MLIR_SPARSE_TENSOR_DIM_LEVEL_SINGLETON_NO = 18
+    MLIR_SPARSE_TENSOR_DIM_LEVEL_SINGLETON_NU_NO = 19
 end
 
 """
@@ -5874,6 +5877,7 @@ function mlirOperationImplementsInterfaceStatic(operationName, context, interfac
     @ccall mlir_c.mlirOperationImplementsInterfaceStatic(operationName::MlirStringRef, context::MlirContext, interfaceTypeID::MlirTypeID)::Bool
 end
 
+# no prototype is found for this function at Interfaces.h:45:31, please use with caution
 """
     mlirInferTypeOpInterfaceTypeID()
 

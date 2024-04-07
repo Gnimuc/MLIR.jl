@@ -133,82 +133,40 @@ end
 
 function rewrite!(dag::ExprDAG) end
 
-julia_llvm = Dict([v"1.9" => v"14.0.5+3", v"1.10" => v"15.0.7+10", v"1.11" => v"16.0.6+2"])
 options = load_options(joinpath(@__DIR__, "wrap.toml"))
 
 @add_def off_t
 @add_def MlirTypesCallback
 
-for (julia_version, llvm_version) in julia_llvm
-    println("Generating... julia version: $julia_version, llvm version: $llvm_version")
+julia_version, llvm_version = v"1.11", v"16.0.6+2"
 
-    temp_prefix() do prefix
-        platform = Pkg.BinaryPlatforms.HostPlatform()
-        platform["llvm_version"] = string(llvm_version.major)
-        platform["julia_version"] = string(julia_version)
+println("Generating... julia version: $julia_version, llvm version: $llvm_version")
 
-        # Note: 1.10
-        dependencies = PkgSpec[
-            PkgSpec(; name="LLVM_full_jll", version=llvm_version),
-            PkgSpec(; name="mlir_jl_tblgen_jll")
-        ]
+using LLVM_full_jll
 
-        artifact_paths = setup_dependencies(prefix, dependencies, platform; verbose=true)
+include_dir = joinpath(LLVM_full_jll.artifact_dir, "include")
 
-        mlir_jl_tblgen = joinpath(destdir(prefix, platform), "bin", "mlir-jl-tblgen")
-        include_dir = joinpath(destdir(prefix, platform), "include")
+# generate MLIR API bindings
+mkpath(joinpath(@__DIR__, "..", "src", "API", string(llvm_version.major)))
 
-        # generate MLIR API bindings
-        mkpath(joinpath(@__DIR__, "..", "src", "API", string(llvm_version.major)))
+output_file_path = joinpath(@__DIR__, "..", "src", "API", string(llvm_version.major), options["general"]["output_file_path"])
+isdir(dirname(output_file_path)) || mkpath(dirname(output_file_path))
+options["general"]["output_file_path"] = output_file_path
 
-        let options = deepcopy(options)
-            output_file_path = joinpath(@__DIR__, "..", "src", "API", string(llvm_version.major), options["general"]["output_file_path"])
-            isdir(dirname(output_file_path)) || mkpath(dirname(output_file_path))
-            options["general"]["output_file_path"] = output_file_path
+libmlir_header_dir = joinpath(include_dir, "mlir-c")
+args = Generators.get_default_args()
+append!(args, ["-I", include_dir])
 
-            libmlir_header_dir = joinpath(include_dir, "mlir-c")
-            args = Generators.get_default_args()
-            append!(args, ["-I", include_dir, "-x", "c++"])
+# args = Generators.get_default_args(; is_cxx=true)
+# append!(args, ["-I", include_dir, "-nostdinc++", "-nostdinc"])
 
-            headers = detect_headers(libmlir_header_dir, args, Dict(), endswith("Python/Interop.h"))
-            ctx = create_context(headers, args, options)
+headers = detect_headers(libmlir_header_dir, args, Dict(), endswith("Python/Interop.h"))
+ctx = create_context(headers, args, options)
 
-            # build without printing so we can do custom rewriting
-            build!(ctx, BUILDSTAGE_NO_PRINTING)
+# build without printing so we can do custom rewriting
+build!(ctx, BUILDSTAGE_NO_PRINTING)
 
-            rewrite!(ctx.dag)
+rewrite!(ctx.dag)
 
-            # print
-            build!(ctx, BUILDSTAGE_PRINTING_ONLY)
-        end
-
-        # generate MLIR dialect bindings
-        mkpath(joinpath(@__DIR__, "..", "src", "Dialects", string(llvm_version.major)))
-
-        for (dialect_name, binding, tds) in mlir_dialects(llvm_version)
-            tempfiles = map(tds) do td
-                tempfile, _ = mktemp()
-                flags = [
-                    "--generator=jl-op-defs",
-                    "--disable-module-wrap",
-                    joinpath(include_dir, "mlir", "Dialect", td),
-                    "-I", include_dir,
-                    "-o", tempfile,
-                ]
-                run(`$mlir_jl_tblgen $flags`)
-                return tempfile
-            end
-
-            output = joinpath(@__DIR__, "..", "src", "Dialects", string(llvm_version.major), binding)
-            open(output, "w") do io
-                println(io, "module $dialect_name\n")
-                for tempfile in tempfiles
-                    write(io, read(tempfile, String))
-                end
-                println(io, "end # $dialect_name")
-            end
-
-            println("- Generated \"$binding\" from $(join(tds, ",", " and "))")
-        end
-    end
-end
+# print
+build!(ctx, BUILDSTAGE_PRINTING_ONLY)
