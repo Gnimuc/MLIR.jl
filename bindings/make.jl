@@ -154,11 +154,11 @@ isdir(dirname(output_file_path)) || mkpath(dirname(output_file_path))
 options["general"]["output_file_path"] = output_file_path
 
 libmlir_header_dir = joinpath(include_dir, "mlir-c")
-args = Generators.get_default_args()
-append!(args, ["-I", include_dir])
+# args = Generators.get_default_args()
+# push!(args, "-I"*include_dir)
 
-# args = Generators.get_default_args(; is_cxx=true)
-# append!(args, ["-I", include_dir, "-nostdinc++", "-nostdinc"])
+args = Generators.get_default_args(get_triple(); is_cxx=true)
+push!(args, "-I"*include_dir)
 
 headers = detect_headers(libmlir_header_dir, args, Dict(), endswith("Python/Interop.h"))
 ctx = create_context(headers, args, options)
