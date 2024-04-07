@@ -138,7 +138,7 @@ options = load_options(joinpath(@__DIR__, "wrap.toml"))
 @add_def off_t
 @add_def MlirTypesCallback
 
-julia_version, llvm_version = v"1.11", v"16.0.6+2"
+julia_version, llvm_version = v"1.11", v"16.0.6+4"
 
 println("Generating... julia version: $julia_version, llvm version: $llvm_version")
 
